@@ -6,7 +6,7 @@
 #1. Improve UI of app
 #2. Ensure optimisation of code
 #3. Allow user input of some key parameters via a helper header row
-#4. Create 'loading...' notification
+#4. Create 'loading...' notification - completed 01/08
 #5. Multiple file upload and processing
 
 #Required libraries:
@@ -32,12 +32,15 @@ ui <- fluidPage(
                                     "text/comma-separated-values,text/plain",
                                     ".csv")),
                
-               downloadButton("downloadData", "Download")
+               downloadButton("downloadData", "Download"),
+               br(),
+               em("Please do not click the download button until the graph on the right has been generated")
                ),
              
 
     # Main panel for displaying outputs ----
     mainPanel(
+      img(src = 'NHS.png', align = "right", height="15%", width="15%"),
       
       withSpinner(plotOutput("forecast"))
       
