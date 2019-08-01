@@ -20,7 +20,7 @@ library(ggplot2)
 
 ui <- fluidPage(
   
-  titlePanel("NHS Demand and Capacity Implementation of Prophet"),
+  titlePanel(span(style = "color: rgb(0,94,184)","NHS Demand and Capacity Forecasting Tool")),
   
   sidebarLayout(
   
@@ -82,6 +82,12 @@ server <- function(input, output) {
     return(fcst_m)
   })
   
+  #Process filename for chart
+  
+  file_name <- reactive({
+    file_name <- substr(input$file1$name,7,nchar(input$file1$name)-12)
+  })
+  
   #Present outputs in line and area chart
   output$forecast <- renderPlot({
   
@@ -90,11 +96,11 @@ server <- function(input, output) {
   ggplot(data = fcst_short(), aes(x=ds,y=yhat))+
     geom_ribbon(aes(ymin = yhat_lower, ymax = yhat_upper), fill = "blue", alpha=0.3)+
     geom_line()+
-    ggtitle("Predicted Attendances by Hour")+
+    ggtitle(file_name())+
     xlab("Date")+
     ylab("Attendances")+
     scale_x_datetime(date_breaks = "12 hours")+
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+    theme(plot.title = element_text(size = 22), axis.text.x = element_text(angle = 45, hjust = 1))+
     coord_cartesian(ylim = c(0,fcst_m()))
 
   })
@@ -102,7 +108,7 @@ server <- function(input, output) {
   #Define download parameters for outputs
   output$downloadData <- downloadHandler(
     filename = function() {
-      paste("data-", Sys.Date(), ".csv",sep = "")
+      paste("Import",file_name(), Sys.Date(), ".csv",sep = "")
     },
     content = function(file) {
       write.csv(fcst_short(), file)
