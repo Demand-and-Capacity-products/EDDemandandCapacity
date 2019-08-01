@@ -13,6 +13,7 @@
 library(shiny)
 library(prophet)
 library(anytime)
+library(shinycssloaders)
 library(ggplot2)
 
 #Define UI for data upload
@@ -38,7 +39,7 @@ ui <- fluidPage(
     # Main panel for displaying outputs ----
     mainPanel(
       
-      plotOutput("forecast")
+      withSpinner(plotOutput("forecast"))
       
     )
     
@@ -86,6 +87,11 @@ server <- function(input, output) {
   ggplot(data = fcst_short(), aes(x=ds,y=yhat))+
     geom_ribbon(aes(ymin = yhat_lower, ymax = yhat_upper), fill = "blue", alpha=0.3)+
     geom_line()+
+    ggtitle("Predicted Attendances by Hour")+
+    xlab("Date")+
+    ylab("Attendances")+
+    scale_x_datetime(date_breaks = "12 hours")+
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))+
     coord_cartesian(ylim = c(0,fcst_m()))
 
   })
