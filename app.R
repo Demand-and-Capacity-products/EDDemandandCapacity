@@ -20,7 +20,7 @@ library(ggplot2)
 
 ui <- fluidPage(
   
-  titlePanel(span(style = "color: rgb(0,94,184)","NHS Demand and Capacity Forecasting Tool")),
+  titlePanel(span(style = "color: rgb(0,94,184)","NHS Demand and Capacity Forecasting Tool"), windowTitle = "NHS Demand and Capacity Forecasting Tool"),
   
   sidebarLayout(
   
@@ -33,6 +33,7 @@ ui <- fluidPage(
                                     ".csv")),
                
                downloadButton("downloadData", "Download"),
+               br(),
                br(),
                em("Please do not click the download button until the graph on the right has been generated")
                ),
