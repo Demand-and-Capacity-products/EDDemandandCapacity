@@ -8,3 +8,6 @@ Shinyapps.io was starting to fail due to memory issues. To be re-tested once mos
 
 2019-08-06
 Code updated. Not currently live, but available at paulgbullard.shinyapps.io/EDForecastingPrePublish (new site for tests before release to main app).
+
+2019-08-27
+Code made live. Users testing model (which only accepts two columns) were unable to import files correctly with previous Shiny script.
