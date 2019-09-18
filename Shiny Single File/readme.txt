@@ -11,3 +11,6 @@ Code updated. Not currently live, but available at paulgbullard.shinyapps.io/EDF
 
 2019-08-27
 Code made live. Users testing model (which only accepts two columns) were unable to import files correctly with previous Shiny script.
+
+2019-09-18
+Code updated to include time slider for non-24hour service. Currently only available at paulgbullard.shinyapps.io/EDForecastingPrePublish . Initial testing completed but some further (inc. documentation update) still to be done.
