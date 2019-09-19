@@ -1,4 +1,4 @@
-#Small Shiny app to predict ED demand using FB Prophet (https://facebook.github.io/prophet/)
+  #Small Shiny app to predict ED demand using FB Prophet (https://facebook.github.io/prophet/)
 #Requires data processed via NHS Demand and Capacity Team ED Model for correct formatting
 #Outputs .CSV file with predicted attendances for the next week (by hour).
 
@@ -15,6 +15,7 @@ library(prophet)
 library(anytime)
 library(shinycssloaders)
 library(ggplot2)
+library(dplyr)
 
 #Define UI for data upload
 
@@ -27,11 +28,15 @@ ui <- fluidPage(
     #Sidebar panel for user interaction
     sidebarPanel(h3("Data Upload"),
                  
+                 sliderInput("slider", label = "Department Open (24hr) :", min = 0, max = 24, value = c(0,24)),
+                 
                  fileInput(inputId = 'file1', label = "Upload dataset here:",multiple = TRUE,
                            accept = c("text/csv",
                                       "text/comma-separated-values,text/plain",
                                       ".csv")),
-                 
+                 actionButton("go","Predict"),
+                 br(),
+                 br(),
                  downloadButton("downloadData", "Download"),
                  br(),
                  br(),
@@ -54,7 +59,7 @@ ui <- fluidPage(
 server <- function(input, output) {
   
   #Process data through prophet
-  fcst_short <- eventReactive(input$file1, {
+  fcst_short <- eventReactive(input$go, {
     
     df <- read.csv(input$file1$datapath,
                    header = TRUE,
@@ -69,10 +74,16 @@ server <- function(input, output) {
     m <- add_country_holidays(m,'England')
     m <- fit.prophet(m, df)
     
-    future <- make_future_dataframe(m, periods = 168, freq = 60 * 60)
-    fcst <- predict(m, future)
+    future_short <- make_future_dataframe(m, periods = 168, freq = 60 * 60)
+    future_full <- future_short
+    future_short <- future_short %>% 
+      filter(as.numeric(format(ds, "%H")) >= input$slider[1]) %>%
+      filter(as.numeric(format(ds, "%H")) < input$slider[2])
+    fcst <- predict(m, future_short)
     
-    fcst_short <- tail(fcst, 168)
+    combined <- left_join(future_full, fcst)
+    combined[is.na(combined)] <- 0
+    fcst_short <- tail(combined, 168)
     fcst_short <- fcst_short[c('ds','yhat','yhat_lower','yhat_upper')]
     
     return(fcst_short)
@@ -82,6 +93,11 @@ server <- function(input, output) {
   fcst_m <- reactive({
     fcst_m <- max(fcst_short()$yhat_upper)
     return(fcst_m)
+  })
+  
+  fcst_cut <- reactive({
+    fcst_cut <- fcst_short() %>% mutate(yhat_lower = replace(yhat_lower, yhat_lower < 0, 0), yhat_upper = replace(yhat_upper, yhat_upper < 0, 0), yhat = replace(yhat, yhat < 0, 0)) 
+    return(fcst_cut)
   })
   
   #Process filename for chart
@@ -95,7 +111,7 @@ server <- function(input, output) {
     
     req(input$file1)
     
-    ggplot(data = fcst_short(), aes(x=ds,y=yhat))+
+    ggplot(data = fcst_cut(), aes(x=ds,y=yhat))+
       geom_ribbon(aes(ymin = yhat_lower, ymax = yhat_upper), fill = "blue", alpha=0.3)+
       geom_line()+
       ggtitle(file_name())+
