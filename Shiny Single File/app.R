@@ -1,4 +1,4 @@
-  #Small Shiny app to predict ED demand using FB Prophet (https://facebook.github.io/prophet/)
+#Small Shiny app to predict ED demand using FB Prophet (https://facebook.github.io/prophet/)
 #Requires data processed via NHS Demand and Capacity Team ED Model for correct formatting
 #Outputs .CSV file with predicted attendances for the next week (by hour).
 
@@ -26,17 +26,19 @@ ui <- fluidPage(
   sidebarLayout(
     
     #Sidebar panel for user interaction
-    sidebarPanel(h3("Data Upload"),
+    sidebarPanel(h2("Data Upload"),
                  
-                 sliderInput("slider", label = "Department Open (24hr) :", min = 0, max = 24, value = c(0,24)),
-                 
-                 fileInput(inputId = 'file1', label = "Upload dataset here:",multiple = TRUE,
+                 fileInput(inputId = 'file1', label = "Upload model export here:",multiple = TRUE,
                            accept = c("text/csv",
                                       "text/comma-separated-values,text/plain",
                                       ".csv")),
+                 tags$hr(style="border-color: black;"),
+                 h6("Set the opening time for the department:"),
+                 sliderInput("slider", label = "Department Open (24hr) :", min = 0, max = 24, value = c(0,24)),
+                 tags$hr(style="border-color: black;"),
+                 h6('Use the "Predict" button below to begin the forecast.'),
                  actionButton("go","Predict"),
-                 br(),
-                 br(),
+                 tags$hr(style="border-color: black;"),
                  downloadButton("downloadData", "Download"),
                  br(),
                  br(),
@@ -74,7 +76,7 @@ server <- function(input, output) {
     m <- add_country_holidays(m,'England')
     m <- fit.prophet(m, df)
     
-    future_short <- make_future_dataframe(m, periods = 168, freq = 60 * 60)
+    future_short <- make_future_dataframe(m, periods = 168 + (23 - lubridate::hour(tail(df$ds,1))), freq = 60 * 60)
     future_full <- future_short
     future_short <- future_short %>% 
       filter(as.numeric(format(ds, "%H")) >= input$slider[1]) %>%
@@ -103,7 +105,7 @@ server <- function(input, output) {
   #Process filename for chart
   
   file_name <- reactive({
-    file_name <- substr(input$file1$name,7,nchar(input$file1$name)-12)
+    file_name <- substr(input$file1$name,7,nchar(input$file1$name)-14)
   })
   
   #Present outputs in line and area chart
@@ -117,8 +119,8 @@ server <- function(input, output) {
       ggtitle(file_name())+
       xlab("Date")+
       ylab("Attendances")+
-      scale_x_datetime(date_breaks = "12 hours")+
-      theme(plot.title = element_text(size = 22), axis.text.x = element_text(angle = 45, hjust = 1))+
+      scale_x_datetime(date_breaks = "12 hours",expand = c(0,0))+
+      theme(plot.title = element_text(size = 22), axis.text.x = element_text(angle = 90, hjust = 1))+
       coord_cartesian(ylim = c(0,fcst_m()))
     
   })
