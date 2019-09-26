@@ -14,3 +14,6 @@ Code made live. Users testing model (which only accepts two columns) were unable
 
 2019-09-18
 Code updated to include time slider for non-24hour service. Currently only available at paulgbullard.shinyapps.io/EDForecastingPrePublish . Initial testing completed but some further (inc. documentation update) still to be done.
+
+2019-09-26
+Code updated to change formatting of text to match v1.8.1 model. User interface tidied up. Currently only available at paulgbullard.shinyapps.io/EDForecastingPrePublish. To update to main file when model is circulated to ensure compatability.
