@@ -73,7 +73,6 @@ server <- function(input, output) {
     mrows <- min(8784,rows)
     
     df <- tail(df,mrows)
-    browser()
     
     df$ds <- anytime(df$ds)
     
