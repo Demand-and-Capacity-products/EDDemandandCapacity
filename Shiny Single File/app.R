@@ -3,7 +3,7 @@
 #Outputs .CSV file with predicted attendances for the next week (by hour).
 
 #To do:
-#1. Improve UI of app
+#1. Improve UI of app - 04/10
 #2. Ensure optimisation of code - 06/08
 #3. Allow user input of some key parameters via a helper header row
 #4. Create 'loading...' notification - completed 01/08
@@ -16,11 +16,12 @@ library(anytime)
 library(shinycssloaders)
 library(ggplot2)
 library(dplyr)
+library(shinyjs)
 
 #Define UI for data upload
 
 ui <- fluidPage(
-  
+  useShinyjs(),
   titlePanel(span(style = "color: rgb(0,94,184)","NHS Demand and Capacity Forecasting Tool"), windowTitle = "NHS Demand and Capacity Forecasting Tool"),
   
   sidebarLayout(
@@ -28,7 +29,7 @@ ui <- fluidPage(
     #Sidebar panel for user interaction
     sidebarPanel(h2("Data Upload"),
                  
-                 fileInput(inputId = 'file1', label = "Upload model export here:",multiple = TRUE,
+                 fileInput(inputId = 'file1', label = "Upload model export here:",multiple = FALSE,
                            accept = c("text/csv",
                                       "text/comma-separated-values,text/plain",
                                       ".csv")),
@@ -59,7 +60,7 @@ ui <- fluidPage(
 
 #Define server logic to process uploaded file
 server <- function(input, output) {
-  
+
   #Process data through prophet
   fcst_short <- eventReactive(input$go, {
     
@@ -68,15 +69,19 @@ server <- function(input, output) {
                    sep = ","
     )
     
-    df <- tail(df,-8784)
+    rows <- nrow(df)
+    mrows <- min(8784,rows)
+    
+    df <- tail(df,mrows)
+    browser()
     
     df$ds <- anytime(df$ds)
     
-    m <- prophet(yearly.seasonality = TRUE)
+    m <- prophet(yearly.seasonality = TRUE, interval.width = 0.85)
     m <- add_country_holidays(m,'England')
     m <- fit.prophet(m, df)
     
-    future_short <- make_future_dataframe(m, periods = 168 + (23 - lubridate::hour(tail(df$ds,1))), freq = 60 * 60)
+    future_short <- make_future_dataframe(m, periods = 169 + (23 - lubridate::hour(tail(df$ds,1))), freq = 60 * 60)
     future_full <- future_short
     future_short <- future_short %>% 
       filter(as.numeric(format(ds, "%H")) >= input$slider[1]) %>%
@@ -91,19 +96,20 @@ server <- function(input, output) {
     return(fcst_short)
   })
   
+  #Process data to match capacity timescales
+  fcst_cut <- reactive({
+    fcst_cut <- fcst_short() %>% mutate(yhat_lower = replace(yhat_lower, yhat_lower < 0, 0), yhat_upper = replace(yhat_upper, yhat_upper < 0, 0), yhat = replace(yhat, yhat < 0, 0)) 
+    return(fcst_cut)
+  })
+  
   #Process outputs to help chart display
   fcst_m <- reactive({
     fcst_m <- max(fcst_short()$yhat_upper)
     return(fcst_m)
   })
   
-  fcst_cut <- reactive({
-    fcst_cut <- fcst_short() %>% mutate(yhat_lower = replace(yhat_lower, yhat_lower < 0, 0), yhat_upper = replace(yhat_upper, yhat_upper < 0, 0), yhat = replace(yhat, yhat < 0, 0)) 
-    return(fcst_cut)
-  })
-  
   #Process filename for chart
-  
+
   file_name <- reactive({
     file_name <- substr(input$file1$name,7,nchar(input$file1$name)-14)
   })
@@ -112,7 +118,7 @@ server <- function(input, output) {
   output$forecast <- renderPlot({
     
     req(input$file1)
-    
+
     ggplot(data = fcst_cut(), aes(x=ds,y=yhat))+
       geom_ribbon(aes(ymin = yhat_lower, ymax = yhat_upper), fill = "blue", alpha=0.3)+
       geom_line()+
