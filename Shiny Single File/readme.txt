@@ -23,3 +23,6 @@ Code updated to reflect changes in how model works with setting capacity to the 
 TODO:
 Work on percentiles currently in non-shiny prophet file. This needs to be brought in to shiny file.
 Following conversations at NHSRConf19 file to be split in to two (server and UI), as well as reactivity improvements to be made.
+
+UPDATE 2019-11-13
+Percentile information brought in to shiny file. Not currently live on main site, but on EDForecastingPrePublish.
