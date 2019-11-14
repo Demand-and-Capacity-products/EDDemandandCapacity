@@ -85,7 +85,7 @@ server <- function(input, output) {
     m <- add_country_holidays(m,'England')
     m <- fit.prophet(m, df)
     
-    future_short <- make_future_dataframe(m, periods = 169 + (23 - lubridate::hour(tail(df$ds,1))), freq = 60 * 60)
+    future_short <- make_future_dataframe(m, periods = 168 + (23 - lubridate::hour(tail(df$ds,1))), freq = 60 * 60)
     future_full <- future_short
     future_short <- future_short %>% 
       filter(as.numeric(format(ds, "%H")) >= input$slider[1]) %>%
