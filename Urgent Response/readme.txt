@@ -1,1 +1,1 @@
-Urgent Response Team Model for community services (includes travel time)
+Urgent Response Team model for community services (includes travel time)

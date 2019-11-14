@@ -1,3 +1,7 @@
+#NOTE - percentiles included in this version. To be signed off before making live.
+#Online at edforecastingprepublish
+#Pull from GitHub if not using percentiles
+
 #Small Shiny app to predict ED demand using FB Prophet (https://facebook.github.io/prophet/)
 #Requires data processed via NHS Demand and Capacity Team ED Model for correct formatting
 #Outputs .CSV file with predicted attendances for the next week (by hour).
@@ -17,6 +21,7 @@ library(shinycssloaders)
 library(ggplot2)
 library(dplyr)
 library(shinyjs)
+library(reshape2)
 
 #Define UI for data upload
 
@@ -76,7 +81,7 @@ server <- function(input, output) {
     
     df$ds <- anytime(df$ds)
     
-    m <- prophet(yearly.seasonality = TRUE, interval.width = 0.85)
+    m <- prophet(yearly.seasonality = TRUE, interval.width = 0.95)
     m <- add_country_holidays(m,'England')
     m <- fit.prophet(m, df)
     
@@ -87,10 +92,23 @@ server <- function(input, output) {
       filter(as.numeric(format(ds, "%H")) < input$slider[2])
     fcst <- predict(m, future_short)
     
+    samples <- predictive_samples(m, future_short)
+    
+    centile_calc <- melt(samples$yhat) %>%
+      select(Var1, value) %>% 
+      group_by(Var1) %>% 
+      summarise('65percentile' = quantile(value, 0.65), 
+                '70percentile' = quantile(value, 0.7), 
+                '75percentile' = quantile(value, 0.75), 
+                '80percentile' = quantile(value, 0.8), 
+                '85percentile' = quantile(value, 0.85)) 
+    
+    fcst <- cbind(fcst, centile_calc)
+    
     combined <- left_join(future_full, fcst)
     combined[is.na(combined)] <- 0
     fcst_short <- tail(combined, 168)
-    fcst_short <- fcst_short[c('ds','yhat','yhat_lower','yhat_upper')]
+    fcst_short <- fcst_short[c('ds','yhat','yhat_lower','yhat_upper','65percentile','70percentile','75percentile','80percentile','85percentile')]
     
     return(fcst_short)
   })
@@ -120,7 +138,7 @@ server <- function(input, output) {
 
     ggplot(data = fcst_cut(), aes(x=ds,y=yhat))+
       geom_ribbon(aes(ymin = yhat_lower, ymax = yhat_upper), fill = "blue", alpha=0.3)+
-      geom_line()+
+      geom_ribbon(aes(ymin = fcst_short()$'65percentile', ymax = fcst_short()$'85percentile'), fill = 'blue', alpha = 0.7)+      geom_line()+
       ggtitle(file_name())+
       xlab("Date")+
       ylab("Attendances")+
