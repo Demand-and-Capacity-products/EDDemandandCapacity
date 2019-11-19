@@ -105,6 +105,6 @@ ggplot(data = short, aes(x=ds,y=yhat))+
 
 dev.off()
 
-  #Save the outputs
+#Save the outputs
 write.csv(short,paste(filename, 'trainforecast.csv'))
   
