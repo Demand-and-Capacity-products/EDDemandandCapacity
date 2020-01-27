@@ -1,7 +1,3 @@
-#NOTE - percentiles included in this version. To be signed off before making live.
-#Online at edforecastingprepublish
-#Pull from GitHub if not using percentiles
-
 #Small Shiny app to predict ED demand using FB Prophet (https://facebook.github.io/prophet/)
 #Requires data processed via NHS Demand and Capacity Team ED Model for correct formatting
 #Outputs .CSV file with predicted attendances for the next week (by hour).
@@ -21,7 +17,6 @@ library(shinycssloaders)
 library(ggplot2)
 library(dplyr)
 library(shinyjs)
-library(reshape2)
 
 #Define UI for data upload
 
@@ -32,19 +27,23 @@ ui <- fluidPage(
   sidebarLayout(
     
     #Sidebar panel for user interaction
-    sidebarPanel(h2("Data Upload"),
+    sidebarPanel(h4("Step 1: Data Upload"),
                  
                  fileInput(inputId = 'file1', label = "Upload model export here:",multiple = FALSE,
                            accept = c("text/csv",
                                       "text/comma-separated-values,text/plain",
                                       ".csv")),
                  tags$hr(style="border-color: black;"),
-                 h6("Set the opening time for the department:"),
+                 h4("Step 2: Opening Times"),
+                 h6("Set the opening times for the department using the two sliders. For example, if the department is open from 8am to 8pm, set the left slider to 8 and the right slider to 20."),
                  sliderInput("slider", label = "Department Open (24hr) :", min = 0, max = 24, value = c(0,24)),
                  tags$hr(style="border-color: black;"),
+                 h4("Step 3: Prediction"),
                  h6('Use the "Predict" button below to begin the forecast.'),
                  actionButton("go","Predict"),
                  tags$hr(style="border-color: black;"),
+                 h4("Step 4: Download"),
+                 h6("Download the completed forecast to be brought back in to the model."),
                  downloadButton("downloadData", "Download"),
                  br(),
                  br(),
@@ -65,7 +64,7 @@ ui <- fluidPage(
 
 #Define server logic to process uploaded file
 server <- function(input, output) {
-
+  
   #Process data through prophet
   fcst_short <- eventReactive(input$go, {
     
@@ -81,7 +80,7 @@ server <- function(input, output) {
     
     df$ds <- anytime(df$ds)
     
-    m <- prophet(yearly.seasonality = TRUE, interval.width = 0.95)
+    m <- prophet(yearly.seasonality = TRUE, interval.width = 0.85)
     m <- add_country_holidays(m,'England')
     m <- fit.prophet(m, df)
     
@@ -92,30 +91,20 @@ server <- function(input, output) {
       filter(as.numeric(format(ds, "%H")) < input$slider[2])
     fcst <- predict(m, future_short)
     
-    samples <- predictive_samples(m, future_short)
-    
-    centile_calc <- melt(samples$yhat) %>%
-      select(Var1, value) %>% 
-      group_by(Var1) %>% 
-      summarise('65percentile' = quantile(value, 0.65), 
-                '70percentile' = quantile(value, 0.7), 
-                '75percentile' = quantile(value, 0.75), 
-                '80percentile' = quantile(value, 0.8), 
-                '85percentile' = quantile(value, 0.85)) 
-    
-    fcst <- cbind(fcst, centile_calc)
-    
     combined <- left_join(future_full, fcst)
     combined[is.na(combined)] <- 0
     fcst_short <- tail(combined, 168)
-    fcst_short <- fcst_short[c('ds','yhat','yhat_lower','yhat_upper','65percentile','70percentile','75percentile','80percentile','85percentile')]
+    fcst_short <- fcst_short[c('ds','yhat','yhat_lower','yhat_upper')]
     
     return(fcst_short)
   })
   
   #Process data to match capacity timescales
   fcst_cut <- reactive({
-    fcst_cut <- fcst_short() %>% mutate(yhat_lower = replace(yhat_lower, yhat_lower < 0, 0), yhat_upper = replace(yhat_upper, yhat_upper < 0, 0), yhat = replace(yhat, yhat < 0, 0)) 
+    fcst_cut <- fcst_short() %>% 
+      mutate(yhat_lower = replace(yhat_lower, yhat_lower < 0, 0), 
+             yhat_upper = replace(yhat_upper, yhat_upper < 0, 0), 
+             yhat = replace(yhat, yhat < 0, 0)) 
     return(fcst_cut)
   })
   
@@ -126,8 +115,8 @@ server <- function(input, output) {
   })
   
   #Process filename for chart
-
-  file_name <- reactive({
+  
+  file_name <- eventReactive(input$go, {
     file_name <- substr(input$file1$name,7,nchar(input$file1$name)-14)
   })
   
@@ -135,10 +124,10 @@ server <- function(input, output) {
   output$forecast <- renderPlot({
     
     req(input$file1)
-
+    
     ggplot(data = fcst_cut(), aes(x=ds,y=yhat))+
       geom_ribbon(aes(ymin = yhat_lower, ymax = yhat_upper), fill = "blue", alpha=0.3)+
-      geom_ribbon(aes(ymin = fcst_short()$'65percentile', ymax = fcst_short()$'85percentile'), fill = 'blue', alpha = 0.7)+      geom_line()+
+      geom_line()+
       ggtitle(file_name())+
       xlab("Date")+
       ylab("Attendances")+
@@ -153,6 +142,7 @@ server <- function(input, output) {
     filename = function() {
       paste("Import",file_name(), Sys.Date(), ".csv",sep = "")
     },
+    
     content = function(file) {
       write.csv(fcst_short(), file)
     }
