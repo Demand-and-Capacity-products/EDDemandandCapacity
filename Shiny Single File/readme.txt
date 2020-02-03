@@ -30,3 +30,4 @@ Percentile information brought in to shiny file. Not currently live on main site
 2020-02-03
 Percentile information not currently in live. Further discussions to be had.
 Performance increase for app by removing history from make_future_dataframe (monte-carlo only on newly predicted data).
+Graph now hides if new data has been uploaded but not processed.
