@@ -26,3 +26,7 @@ Following conversations at NHSRConf19 file to be split in to two (server and UI)
 
 UPDATE 2019-11-13
 Percentile information brought in to shiny file. Not currently live on main site, but on EDForecastingPrePublish.
+
+2020-02-03
+Percentile information not currently in live. Further discussions to be had.
+Performance increase for app by removing history from make_future_dataframe (monte-carlo only on newly predicted data).
