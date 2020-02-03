@@ -4,11 +4,11 @@
 
 #To do:
 #1. Improve UI of app - 04/10
-#2. Ensure optimisation of code - 06/08
+#2. Ensure optimisation of code - 02/20
 #3. Allow user input of some key parameters via a helper header row
 #4. Create 'loading...' notification - completed 01/08
 #5. Multiple file upload and processing
-#6. Highlight when graph needs refreshing to update to new dataset uploaded 
+#6. Highlight when graph needs refreshing to update to new dataset uploaded - completed 02/20
 
 #Required libraries:
 library(shiny)
@@ -77,7 +77,7 @@ server <- function(input, output) {
     rows <- nrow(df)
     #mrows <- min(8784,rows)
     
-    df <- tail(df,rows)
+    #df <- tail(df,rows)
     
     df$ds <- anytime(df$ds)
     
