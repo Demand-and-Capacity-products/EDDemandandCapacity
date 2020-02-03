@@ -8,6 +8,7 @@
 #3. Allow user input of some key parameters via a helper header row
 #4. Create 'loading...' notification - completed 01/08
 #5. Multiple file upload and processing
+#6. Highlight when graph needs refreshing to update to new dataset uploaded 
 
 #Required libraries:
 library(shiny)
@@ -74,9 +75,9 @@ server <- function(input, output) {
     )
     
     rows <- nrow(df)
-    mrows <- min(8784,rows)
+    #mrows <- min(8784,rows)
     
-    df <- tail(df,mrows)
+    df <- tail(df,rows)
     
     df$ds <- anytime(df$ds)
     
@@ -84,7 +85,7 @@ server <- function(input, output) {
     m <- add_country_holidays(m,'England')
     m <- fit.prophet(m, df)
     
-    future_short <- make_future_dataframe(m, periods = 168 + (23 - lubridate::hour(tail(df$ds,1))), freq = 60 * 60)
+    future_short <- make_future_dataframe(m, periods = 168 + (23 - lubridate::hour(tail(df$ds,1))), freq = 60 * 60, include_history = FALSE)
     future_full <- future_short
     future_short <- future_short %>% 
       filter(as.numeric(format(ds, "%H")) >= input$slider[1]) %>%
@@ -118,14 +119,15 @@ server <- function(input, output) {
   
   file_name <- eventReactive(input$go, {
     file_name <- substr(input$file1$name,7,nchar(input$file1$name)-14)
-  })
+    return(file_name)
+    })
   
   #Present outputs in line and area chart
   output$forecast <- renderPlot({
-    
-    req(input$file1)
-    
-    ggplot(data = fcst_cut(), aes(x=ds,y=yhat))+
+
+    input$file1
+    if(file_name() == substr(input$file1$name,7,nchar(input$file1$name)-14))
+    {ggplot(data = fcst_cut(), aes(x=ds,y=yhat))+
       geom_ribbon(aes(ymin = yhat_lower, ymax = yhat_upper), fill = "blue", alpha=0.3)+
       geom_line()+
       ggtitle(file_name())+
@@ -133,7 +135,7 @@ server <- function(input, output) {
       ylab("Attendances")+
       scale_x_datetime(date_breaks = "12 hours",expand = c(0,0))+
       theme(plot.title = element_text(size = 22), axis.text.x = element_text(angle = 90, hjust = 1))+
-      coord_cartesian(ylim = c(0,fcst_m()))
+      coord_cartesian(ylim = c(0,fcst_m()))}
     
   })
   
