@@ -9,13 +9,13 @@ library(ggplot2)
 
 #Prep prophet
 
-m <- prophet(yearly.seasonality = TRUE, interval.width = 0.85)
+m <- prophet(yearly.seasonality = TRUE, monthly.seasonality = TRUE, daily.seasonality = TRUE, interval.width = 0.85)
 m <- add_country_holidays(m,'England')
 
 #ReadCSV
 
-dat <- read.csv("Data/ExportComb19-08-27.csv")
-dat$ds <- anytime(dat$ds)
+dat <- read.csv("Data/ExportMajors2019-11-13.csv")
+dat$ds <- anytime(dat$ds, tz = "GMT")
 
 #Split into multiple dataframes, and fit prophet model
 x <- NULL
@@ -32,21 +32,12 @@ for (i in 1:length(x)) {
   assign(paste("m",x[i],sep=""), fit.prophet(m, get(paste("df", x[i], sep = ""))))
 }
 
-#for (i in 1:length(x)) {
-#  assign(paste("m",x[i],sep=""), fit.prophet(m, get(paste("df", x[i], sep = ""))))
-#}
-
-#Needs fixing
-
+#Currently bugged and logged on GH
+#Make one future dataframe for all streams
 future <- make_future_dataframe(get(paste("m",x[i],sep="")),
                                 periods = 168 + if (24-hour(tail(dat$ds,1)) == 24) {0} else {24-hour(tail(dat$ds,1))},
                                 freq = 60*60, 
                                 include_history = FALSE)
-
- 
-
-#future <- make_future_dataframe(mAmb, periods = 168 + (23 - lubridate::hour(tail(dat$ds,1))), freq = 60 * 60, include_history = FALSE)
-
 df <- data.frame()
 
 for (i in 1:length(x)) {
@@ -59,12 +50,13 @@ for (i in 1:length(x)) {
   if(is_empty(df)) {df <- get(paste("forecast",x[i],sep=""))} else {df <- cbind(df,get(paste("forecast",x[i],sep="")))}
 }
 
-df <- df[-c(5)]
-
-
+#cut to one week
+df <- df[-c(5)] %>% 
+  head(-1) %>% 
+  tail(-1)
 
 ggplot(data = df, aes(x=ds,y=df[,2]))+
-  geom_ribbon(aes(ymin = yhat_lowerAmb, ymax = yhat_upperAmb), fill = "blue", alpha=0.3)+
+  geom_ribbon(aes(ymin = yhat_lowery, ymax = yhat_uppery), fill = "blue", alpha=0.3)+
   geom_line()+
   xlab("Date")+
   ylab("Attendances")+
