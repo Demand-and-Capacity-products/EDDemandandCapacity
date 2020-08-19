@@ -6,6 +6,7 @@ library(anytime)
 library(prophet)
 library(lubridate)
 library(ggplot2)
+library(tidyr)
 
 #Prep prophet
 
@@ -14,8 +15,12 @@ m <- add_country_holidays(m,'England')
 
 #ReadCSV
 
-dat <- read.csv("Data/ExportMajors2019-11-13.csv")
+dat <- read.csv("Data/Majors1.csv")
+dat <- dat %>% 
+  rename("ds" = "Date.Time", "y" = "Majors")
 dat$ds <- anytime(dat$ds, tz = "GMT")
+dat <- dat %>% 
+  filter(ds < "2020-01-01")
 
 #Split into multiple dataframes, and fit prophet model
 x <- NULL
@@ -69,4 +74,26 @@ ggplot(data = df, aes(x=ds,y=yhatWal.In))+
   xlab("Date")+
   ylab("Attendances")+
   scale_x_datetime(date_breaks = "12 hours",expand = c(0,0))+
+  theme(plot.title = element_text(size = 22), axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+
+
+
+
+
+#Testing
+full_data <- full_join(dat,df)
+
+cut_data <- as_tibble(full_data) %>% 
+  filter(ds > "2019-01-01") %>% 
+  replace(is.na(.), 0)
+
+cut_data %>% 
+  ggplot(aes(x=ds,y=y))+
+  geom_ribbon(aes(ymin = yhat_lowery, ymax = yhat_uppery), fill = "blue", alpha=0.3)+
+  geom_line()+
+  xlab("Date")+
+  ylab("Attendances")+
+  scale_x_datetime(date_breaks = "1 month",expand = c(0,0))+
   theme(plot.title = element_text(size = 22), axis.text.x = element_text(angle = 90, hjust = 1))
