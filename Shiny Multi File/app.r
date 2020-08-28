@@ -10,6 +10,7 @@ library(shinycssloaders)
 library(ggplot2)
 library(dplyr)
 library(shinyjs)
+library(lubridate)
 
 #Define UI for data upload
 
@@ -48,6 +49,7 @@ ui <- fluidPage(
     mainPanel(
       img(src = 'NHS.png', align = "right", height="15%", width="15%"),
       
+      uiOutput("tabs"),
       withSpinner(plotOutput("forecast"))
       
     )
@@ -62,16 +64,41 @@ server <- function(input, output) {
   m <- prophet(yearly.seasonality = TRUE, monthly.seasonality = TRUE, daily.seasonality = TRUE, interval.width = 0.85)
   m <- add_country_holidays(m,'England')
   
+  df <- reactive({
+    df <- read.csv(input$file1$datapath,
+             header = TRUE,
+             sep = ",")
+    
+    df$ds <- anytime(df$ds, tz = "GMT")
+    return(df)
+  })
+  
+  #Get stream count
+  counter <- reactive({
+    if (is.null(input$file1)) {
+      return(NULL)
+    }
+    data_set <- df()
+    counter <-ncol(data_set)-1
+    return(counter)
+  })
+  
+  output$tabs <- renderUI({
+    counter <- counter()
+    if (is.null(fcst_short())) {
+      return(NULL)
+    } else {
+      data <- df()
+      data <- data[1:counter+1]
+      tabs <- lapply(names(data), tabPanel)
+      do.call(tabsetPanel, c(tabs, id="streamtab"))
+    }
+  })
   
   #Process data through prophet
   fcst_short <- eventReactive(input$go, {
     
-    df <- read.csv(input$file1$datapath,
-                   header = TRUE,
-                   sep = ","
-    )
-    
-    df$ds <- anytime(df$ds, tz = "GMT")
+    df <- df()
     
     rows <- nrow(df)
     ##############
@@ -118,83 +145,57 @@ server <- function(input, output) {
     if(is_empty(combined)) {combined <- left_join(future_base, get(paste("forecast",x[i],sep="")))} else {(combined <- left_join(combined, get(paste("forecast",x[i],sep=""))))}}
     combined[is.na(combined)] <- 0
     fcst_short <- tail(combined, 168)
-    #fcst_short <- fcst_short[c('ds','yhat','yhat_lower','yhat_upper')]
-    
-    ##############
-    # df$ds <- anytime(df$ds)
-    # 
-    # m <- prophet(yearly.seasonality = TRUE, interval.width = 0.85)
-    # m <- add_country_holidays(m,'England')
-    # m <- fit.prophet(m, df)
-    # 
-    # future_short <- make_future_dataframe(m, periods = 168 + (23 - lubridate::hour(tail(df$ds,1))), freq = 60 * 60, include_history = FALSE)
-    # future_full <- future_short
-    # future_short <- future_short %>% 
-    #   filter(as.numeric(format(ds, "%H")) >= input$slider[1]) %>%
-    #   filter(as.numeric(format(ds, "%H")) < input$slider[2])
-    # fcst <- predict(m, future_short)
-    # 
-    # combined <- left_join(future_full, fcst)
-    # combined[is.na(combined)] <- 0
-    # fcst_short <- tail(combined, 168)
-    # fcst_short <- fcst_short[c('ds','yhat','yhat_lower','yhat_upper')]
-    ##############
     
     return(fcst_short)
   })
   
-  #Process data to match capacity timescales
-  fcst_cut <- reactive({
-    fcst_cut <- fcst_short() %>% 
-      for (i in 1:length(x)) {
-       mutate(yhat_lower = replace(yhat_lower,yhat_lower < 0, 0)) 
-              #paste(yhat_upper,x[i], sep = "") = replace(paste(yhat_upper,x[i], sep = ""), paste(yhat_upper,x[i],sep = "") < 0, 0), 
-              #paste(yhat,x[i], sep = "") = replace(paste(yhat,x[i], sep = ""), paste(yhat,x[i], sep = "") < 0, 0)) 
-    }
-    return(fcst_cut)
-  })
-  
-  #Process outputs to help chart display
-  fcst_m <- reactive({
-    fcst_m <- max(fcst_short()$yhat_upper)
-    return(fcst_m)
-  })
-  
-  #Process filename for chart
-  
-  file_name <- eventReactive(input$go, {
-    file_name <- substr(input$file1$name,7,nchar(input$file1$name)-14)
-    return(file_name)
-  })
+  # #Process data to match capacity timescales
+  # fcst_cut <- reactive({
+  #   fcst_cut <- fcst_short() %>% 
+  #     for (i in 1:length(x)) {
+  #      mutate(yhat_lower = replace(yhat_lower,yhat_lower < 0, 0)) 
+  #             #paste(yhat_upper,x[i], sep = "") = replace(paste(yhat_upper,x[i], sep = ""), paste(yhat_upper,x[i],sep = "") < 0, 0), 
+  #             #paste(yhat,x[i], sep = "") = replace(paste(yhat,x[i], sep = ""), paste(yhat,x[i], sep = "") < 0, 0)) 
+  #   }
+  #   return(fcst_cut)
+  # })
   
   #Present outputs in line and area chart
   output$forecast <- renderPlot({
     
-    input$file1
-    if(file_name() == substr(input$file1$name,7,nchar(input$file1$name)-14))
-    {ggplot(data = fcst_cut(), aes(x=ds,y=yhat))+
-        geom_ribbon(aes(ymin = yhat_lower, ymax = yhat_upper), fill = "blue", alpha=0.3)+
+    if (is.null(input$file1)) {
+      return(NULL)
+    }
+    
+    myData <- fcst_short()
+    fcst_m <- max(myData[paste0("yhat_upper",input$streamtab)])
+    
+    
+    ggplot(data = myData, aes(x=ds,y=get(paste0("yhat",input$streamtab)), group = 1))+
+      geom_ribbon(aes(ymin = get(paste0("yhat_lower",input$streamtab)), ymax = get(paste0("yhat_upper",input$streamtab))),fill = "blue", alpha = 0.3)+
         geom_line()+
-        ggtitle(file_name())+
+        ggtitle(paste0(input$streamtab))+
         xlab("Date")+
         ylab("Attendances")+
         scale_x_datetime(date_breaks = "12 hours",expand = c(0,0))+
         theme(plot.title = element_text(size = 22), axis.text.x = element_text(angle = 90, hjust = 1))+
-        coord_cartesian(ylim = c(0,fcst_m()))}
+        coord_cartesian(ylim = c(0,fcst_m))}
     
-  })
+  #}
+)
+  
   
   #Define download parameters for outputs
-  output$downloadData <- downloadHandler(
-    filename = function() {
-      paste("Import",file_name(), Sys.Date(), ".csv",sep = "")
-    },
-    
-    content = function(file) {
-      write.csv(fcst_short(), file)
-    }
-    
-  )
+   output$downloadData <- downloadHandler(
+     filename = function() {
+       paste("Import", Sys.Date(), ".csv",sep = "")
+     },
+     
+     content = function(file) {
+       write.csv(fcst_short(), file)
+     }
+     
+   )
   
 }
 # Run the app ----
