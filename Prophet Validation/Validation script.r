@@ -53,12 +53,14 @@ dftest <- tail(df, 168)
 #Initiate prophet, and start to build the model parameters.
 m <- prophet()
 m <- add_country_holidays(m, 'England')
-m <- prophet(dftrain, 
-             seasonality.mode = 'multiplicative', 
+m <- prophet( 
              weekly.seasonality = TRUE, 
              daily.seasonality = TRUE, 
              yearly.seasonality = TRUE, 
              interval.width = 0.85)
+
+#fit prophet
+m <- fit.prophet(m, df)
 
 #Create a future data frame to predict in to
 future <- make_future_dataframe(m, periods = 168, freq = 'hour')
