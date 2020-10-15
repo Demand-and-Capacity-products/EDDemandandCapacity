@@ -1,0 +1,13 @@
+name: SixWeekForecast
+title: SixWeekForecast
+username:
+account: paulgbullard
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3014375
+bundleId: 3744055
+url: https://paulgbullard.shinyapps.io/SixWeekForecast/
+when: 1602749437.61151
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: script.r
