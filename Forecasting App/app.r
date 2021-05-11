@@ -1,3 +1,4 @@
+#1 week prediction
 #Small Shiny app to predict ED demand using FB Prophet (https://facebook.github.io/prophet/)
 #Requires data processed via NHS Demand and Capacity Team ED Model for correct formatting
 #Outputs .CSV file with predicted attendances for the next week (by hour).
@@ -118,7 +119,7 @@ server <- function(input, output) {
     }
     
     future <- make_future_dataframe(get(paste("m",x[i],sep="")),
-                                    periods = 168 + if (24-hour(tail(df$ds,1)) == 24) {0} else {24-hour(tail(df$ds,1))},
+                                    periods = 168 + if (24-hour(tail(df$ds,1)) == 23) {0} else {24-hour(tail(df$ds,1))},
                                     freq = 60*60, 
                                     include_history = FALSE)
     future_base <- future
@@ -144,7 +145,7 @@ server <- function(input, output) {
     for (i in 1:length(x)) {
     if(is_empty(combined)) {combined <- left_join(future_base, get(paste("forecast",x[i],sep="")))} else {(combined <- left_join(combined, get(paste("forecast",x[i],sep=""))))}}
     combined[is.na(combined)] <- 0
-    fcst_short <- tail(combined, 168)
+    fcst_short <- head(combined, 168)
     
     return(fcst_short)
   })

@@ -1,0 +1,13 @@
+name: AttendanceForecasting
+title: AttendanceForecasting
+username:
+account: nhsdemandandcapacity
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2925972
+bundleId: 3922130
+url: https://nhsdemandandcapacity.shinyapps.io/AttendanceForecasting/
+when: 1606729176.46706
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: readme.txt|script.r
